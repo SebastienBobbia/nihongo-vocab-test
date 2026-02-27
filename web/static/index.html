@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本語 Vocabulary Test</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="app" class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>日本語 Vocab Test</h1>
+            <p class="subtitle">Practice Japanese vocabulary</p>
+        </header>
+
+        <!-- Main Menu -->
+        <div id="menu-screen" class="screen">
+            <div class="menu-content">
+                <button class="btn btn-primary btn-large" onclick="startTest('N4')">
+                    <span class="level-badge">N4</span>
+                    Start N4 Test
+                </button>
+                <button class="btn btn-primary btn-large" onclick="startTest('N5')">
+                    <span class="level-badge">N5</span>
+                    Start N5 Test
+                </button>
+                <button class="btn btn-secondary btn-large" onclick="viewStats()">
+                    📊 Statistics
+                </button>
+            </div>
+        </div>
+
+        <!-- Level Selection (N4/N5) -->
+        <div id="level-screen" class="screen hidden">
+            <div class="level-selection">
+                <h2>Select Sheets for <span id="level-name"></span></h2>
+                <div id="sheets-list" class="sheets-grid">
+                    <!-- Sheets will be populated here -->
+                </div>
+                <div class="actions">
+                    <button class="btn btn-secondary" onclick="goToMenu()">← Back</button>
+                    <button class="btn btn-primary" id="start-selected-btn" onclick="startSelectedTest()">
+                        Start Test
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Screen -->
+        <div id="test-screen" class="screen hidden">
+            <div class="test-header">
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <p class="progress-text">Question <span id="current-q">1</span> of <span id="total-q">50</span></p>
+            </div>
+
+            <div class="test-content">
+                <!-- Question Type 1: Kanji → Hiragana -->
+                <div id="q-type-1" class="question-type">
+                    <div class="question-box">
+                        <p class="question-type-label">読み方を選んでください (Choose the reading)</p>
+                        <div class="question-main" id="q-kanji">漢字</div>
+                    </div>
+                    <div class="choices" id="choices-1">
+                        <!-- Choices will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Question Type 2: French → Japanese -->
+                <div id="q-type-2" class="question-type hidden">
+                    <div class="question-box">
+                        <p class="question-type-label">日本語を選んでください (Choose the Japanese)</p>
+                        <div class="question-main" id="q-french">Mot français</div>
+                    </div>
+                    <div class="choices" id="choices-2">
+                        <!-- Choices will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-navigation">
+                <button class="btn btn-secondary" id="prev-btn" onclick="previousQuestion()" disabled>
+                    ← Previous
+                </button>
+                <button class="btn btn-secondary" id="skip-btn" onclick="skipQuestion()">
+                    Skip
+                </button>
+                <button class="btn btn-primary" id="next-btn" onclick="nextQuestion()">
+                    Next →
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="screen hidden">
+            <div class="results-content">
+                <h2>Test Complete! 🎉</h2>
+                <div class="score-display">
+                    <div class="score-circle">
+                        <span id="score-percent">0%</span>
+                    </div>
+                    <p id="score-text">0 / 0 correct</p>
+                </div>
+
+                <div id="correction-details" class="correction-details">
+                    <!-- Correction details will be shown here -->
+                </div>
+
+                <div class="actions">
+                    <button class="btn btn-secondary" onclick="goToMenu()">← Back to Menu</button>
+                    <button class="btn btn-primary" onclick="retakeTest()">↻ Retake Test</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="error-banner" class="error-banner hidden"></div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
