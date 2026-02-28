@@ -1,0 +1,482 @@
+<!-- Welcome Guide - Peut être ouvert dans le navigateur -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日本語 Nihongo Vocab Test - Guide Complet</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.95;
+        }
+        
+        main {
+            padding: 40px;
+        }
+        
+        section {
+            margin-bottom: 40px;
+        }
+        
+        h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .step {
+            background: #f5f5f5;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .step h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        code {
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .command {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            font-size: 0.9em;
+        }
+        
+        .success {
+            background: #c8e6c9;
+            color: #1b5e20;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #4caf50;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .info {
+            background: #bbdefb;
+            color: #0d47a1;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .card p {
+            font-size: 0.95em;
+            color: #666;
+        }
+        
+        .button {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        
+        .button:hover {
+            background: #764ba2;
+        }
+        
+        .button.secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        .button.secondary:hover {
+            background: #d0d0d0;
+        }
+        
+        ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+        
+        li {
+            margin: 5px 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        footer {
+            background: #f5f5f5;
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #ddd;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>日本語 Nihongo Vocab Test</h1>
+            <p class="subtitle">Setup Complet & Sécurisé pour iPhone</p>
+        </header>
+        
+        <main>
+            <!-- Introduction -->
+            <section>
+                <h2>🎯 Bienvenue !</h2>
+                <p>Vous avez une <strong>solution complète</strong> pour accéder à vos tests de vocabulaire japonais depuis votre iPhone via votre NAS UGREEN.</p>
+                
+                <div class="success">
+                    <strong>✓ Tout est prêt !</strong> Plus rien à développer. Vous n'avez qu'à déployer.
+                </div>
+            </section>
+            
+            <!-- Quick Start -->
+            <section>
+                <h2>⚡ Démarrage Rapide (5 minutes)</h2>
+                
+                <div class="step">
+                    <h3>Étape 1 : Configurer SSH</h3>
+                    <p>Remplacez les valeurs et exécutez :</p>
+                    <div class="command">
+bash setup-ssh.sh loklas 192.168.1.100 nas.my-tailscale.ts.net
+                    </div>
+                    <p><strong>Ce que ça fait :</strong> Configure l'accès sans mot de passe au NAS</p>
+                </div>
+                
+                <div class="step">
+                    <h3>Étape 2 : Déployer</h3>
+                    <div class="command">
+./nas-commands.sh deploy
+                    </div>
+                    <p><strong>Ce que ça fait :</strong> Lance l'app sur le port 8500 du NAS</p>
+                </div>
+                
+                <div class="step">
+                    <h3>Étape 3 : Accéder depuis iPhone</h3>
+                    <p>Trouvez l'IP Tailscale :</p>
+                    <div class="command">
+./nas-commands.sh ip
+                    </div>
+                    <p>Sur iPhone Safari :</p>
+                    <div class="command">
+http://domaine-tailscale:8500
+                    </div>
+                </div>
+            </section>
+            
+            <!-- What You Have -->
+            <section>
+                <h2>📦 Ce qui a été livré</h2>
+                
+                <div class="grid">
+                    <div class="card">
+                        <h3>🌐 App Web</h3>
+                        <p>Interface complète pour iPhone, responsive et intuitive</p>
+                    </div>
+                    <div class="card">
+                        <h3>🐳 Docker</h3>
+                        <p>Déploiement automatisé sur NAS, port 8500</p>
+                    </div>
+                    <div class="card">
+                        <h3>🔐 SSH Keys</h3>
+                        <p>Accès sécurisé sans mot de passe</p>
+                    </div>
+                    <div class="card">
+                        <h3>📱 Tailscale</h3>
+                        <p>Accès iOS sécurisé depuis n'importe où</p>
+                    </div>
+                    <div class="card">
+                        <h3>🤖 Automation</h3>
+                        <p>Scripts pour déploiement et gestion</p>
+                    </div>
+                    <div class="card">
+                        <h3>📖 Docs</h3>
+                        <p>Documentation complète et guides</p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Documentation Index -->
+            <section>
+                <h2>📚 Documentation</h2>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Document</th>
+                            <th>Quand le lire</th>
+                            <th>Temps</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>README_FINAL.md</code></td>
+                            <td>Pour comprendre le setup complet</td>
+                            <td>5 min</td>
+                        </tr>
+                        <tr>
+                            <td><code>DEPLOY_QUICK.md</code></td>
+                            <td>Pour un déploiement ultra-rapide</td>
+                            <td>5 min</td>
+                        </tr>
+                        <tr>
+                            <td><code>SSH_QUICK.md</code></td>
+                            <td>Pour configurer SSH rapidement</td>
+                            <td>2 min</td>
+                        </tr>
+                        <tr>
+                            <td><code>DEPLOY_UGREEN.md</code></td>
+                            <td>Guide détaillé UGREEN NAS</td>
+                            <td>20 min</td>
+                        </tr>
+                        <tr>
+                            <td><code>CHECKLIST.md</code></td>
+                            <td>Avant de lancer le déploiement</td>
+                            <td>10 min</td>
+                        </tr>
+                        <tr>
+                            <td><code>ARCHITECTURE.md</code></td>
+                            <td>Pour voir le workflow complet</td>
+                            <td>5 min</td>
+                        </tr>
+                        <tr>
+                            <td><code>DOCS_INDEX.md</code></td>
+                            <td>Pour trouver rapidement ce qu'il faut</td>
+                            <td>2 min</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <!-- Key Commands -->
+            <section>
+                <h2>🎯 Commandes Essentielles</h2>
+                
+                <div class="info">
+                    <strong>💡 Ces commandes suffisent pour tout faire :</strong>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Commande</th>
+                            <th>Objectif</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>bash setup-ssh.sh ...</code></td>
+                            <td>Configuration SSH initiale</td>
+                        </tr>
+                        <tr>
+                            <td><code>./nas-commands.sh deploy</code></td>
+                            <td>Déployer l'app</td>
+                        </tr>
+                        <tr>
+                            <td><code>./nas-commands.sh logs</code></td>
+                            <td>Voir les logs en temps réel</td>
+                        </tr>
+                        <tr>
+                            <td><code>./nas-commands.sh restart</code></td>
+                            <td>Redémarrer l'app</td>
+                        </tr>
+                        <tr>
+                            <td><code>./nas-commands.sh ip</code></td>
+                            <td>Voir l'IP Tailscale</td>
+                        </tr>
+                        <tr>
+                            <td><code>ssh nas</code></td>
+                            <td>SSH direct au NAS</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <!-- Security -->
+            <section>
+                <h2>🔐 Sécurité</h2>
+                
+                <div class="success">
+                    <strong>✓ Zéro credential en clair</strong>
+                    <ul>
+                        <li>Clés SSH seulement (pas dans Git)</li>
+                        <li>.gitignore protège tous les secrets</li>
+                        <li>Aucun mot de passe à stocker</li>
+                        <li>Aucun token API exposé</li>
+                    </ul>
+                </div>
+                
+                <div class="info">
+                    <strong>Vérifier :</strong>
+                    <div class="command">
+git log --all --full-history -- "*id_rsa*" "*id_ed25519*" ".env*"
+# Ne devrait rien retourner
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Next Steps -->
+            <section>
+                <h2>🚀 Prochaines Étapes</h2>
+                
+                <ol style="margin-left: 30px; line-height: 2;">
+                    <li><strong>Lire</strong> <code>DOCS_INDEX.md</code> pour naviguer dans la doc</li>
+                    <li><strong>Suivre</strong> les étapes rapides du haut</li>
+                    <li><strong>Vérifier</strong> votre setup avec <code>CHECKLIST.md</code></li>
+                    <li><strong>Lancer</strong> le déploiement</li>
+                    <li><strong>Tester</strong> depuis iPhone</li>
+                    <li><strong>Profiter</strong> de votre app ! 🎌</li>
+                </ol>
+            </section>
+            
+            <!-- Help -->
+            <section>
+                <h2>🆘 Besoin d'aide ?</h2>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Problème</th>
+                            <th>Solution</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>SSH ne fonctionne pas</td>
+                            <td>Consultez <code>SSH_CONFIG.md</code></td>
+                        </tr>
+                        <tr>
+                            <td>App ne démarre pas</td>
+                            <td>Consultez <code>DEPLOY_UGREEN.md</code> dépannage</td>
+                        </tr>
+                        <tr>
+                            <td>iPhone ne peut pas accéder</td>
+                            <td>Consultez <code>CHECKLIST.md</code> iPhone</td>
+                        </tr>
+                        <tr>
+                            <td>Je ne sais pas par où commencer</td>
+                            <td>Consultez <code>DOCS_INDEX.md</code></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <!-- Contact -->
+            <section>
+                <h2>📞 Support</h2>
+                <p>En cas de problème :</p>
+                <ul>
+                    <li>Consultez les logs : <code>./nas-commands.sh logs</code></li>
+                    <li>Redémarrez l'app : <code>./nas-commands.sh restart</code></li>
+                    <li>Consultez la documentation dans le repo</li>
+                    <li>Vérifiez <code>CHECKLIST.md</code></li>
+                </ul>
+            </section>
+        </main>
+        
+        <footer>
+            <p>日本語 Nihongo Vocab Test • Setup Complet • Créé avec ❤️</p>
+            <p style="margin-top: 10px; color: #999;">Bon courage pour vos révisions ! 🎌</p>
+        </footer>
+    </div>
+</body>
+</html>
