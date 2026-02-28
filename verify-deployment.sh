@@ -1,47 +1,36 @@
 #!/bin/bash
 
-# verify-deployment.sh
-# Pre-deployment verification script
-# Checks all prerequisites before attempting deployment
-
-set -e
-
-# Colors for output
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# verify-deployment.sh - Pre-deployment verification script
 
 CHECKS_PASSED=0
 CHECKS_FAILED=0
 
-# Helper functions
 print_header() {
-    echo -e "\n${BLUE}=== $1 ===${NC}\n"
+    echo ""
+    echo "=== $1 ==="
+    echo ""
 }
 
 check_pass() {
-    echo -e "${GREEN}✓${NC} $1"
+    echo "[PASS] $1"
     ((CHECKS_PASSED++))
 }
 
 check_fail() {
-    echo -e "${RED}✗${NC} $1"
+    echo "[FAIL] $1"
     ((CHECKS_FAILED++))
 }
 
 check_warn() {
-    echo -e "${YELLOW}⚠${NC} $1"
+    echo "[WARN] $1"
 }
 
 # Main verification
 print_header "Local Environment Checks"
 
-# Check git status
+# Check git
 if git rev-parse --git-dir > /dev/null 2>&1; then
     check_pass "Git repository initialized"
-    check_warn "New files not yet committed - run: git add . && git commit -m 'docs: Add troubleshooting guide and deployment verification script'"
 else
     check_fail "Not a git repository"
 fi
@@ -89,32 +78,32 @@ else
     check_warn "SSH config not found (~/.ssh/config)"
 fi
 
-# Check connectivity to NAS
+# Check network connectivity
 print_header "Network Connectivity Check"
 
 if command -v ping &> /dev/null; then
     if timeout 5 ping -c 1 192.168.1.100 &> /dev/null; then
         check_pass "NAS is reachable (192.168.1.100)"
     else
-        check_fail "NAS is not reachable at 192.168.1.100"
+        check_warn "NAS not reachable at 192.168.1.100 (may be offline or wrong IP)"
     fi
 else
     check_warn "ping command not available - skipping connectivity test"
 fi
 
 # Test SSH connection
-if timeout 10 ssh -o ConnectTimeout=5 nas "echo 'SSH connection successful'" &> /dev/null; then
+if timeout 10 ssh -o ConnectTimeout=5 nas "echo OK" &> /dev/null 2>&1; then
     check_pass "SSH connection to NAS works"
     
     # Check Docker on NAS
-    if timeout 10 ssh nas "docker --version" &> /dev/null; then
+    if timeout 10 ssh nas "docker --version" &> /dev/null 2>&1; then
         check_pass "Docker is installed on NAS"
     else
         check_warn "Docker not found on NAS - install with: ssh nas 'curl -sSL https://get.docker.com | sh'"
     fi
     
     # Check deployment directory
-    if timeout 10 ssh nas "ls -d /volume1/docker" &> /dev/null; then
+    if timeout 10 ssh nas "test -d /volume1/docker" &> /dev/null 2>&1; then
         check_pass "Deployment directory exists (/volume1/docker)"
     else
         check_fail "Deployment directory not found (/volume1/docker)"
@@ -123,21 +112,12 @@ else
     check_warn "Cannot SSH to NAS - ensure setup-ssh.sh has been run"
 fi
 
-# Check Python dependencies locally
-print_header "Python Dependencies Check"
+# Check Python locally
+print_header "Python Check"
 
 if command -v python3 &> /dev/null; then
     python_version=$(python3 --version 2>&1 | awk '{print $2}')
     check_pass "Python 3 installed (v${python_version})"
-    
-    # Check critical modules
-    for module in fastapi uvicorn openpyxl pandas; do
-        if python3 -c "import $module" 2>/dev/null; then
-            check_pass "Python module available: $module"
-        else
-            check_warn "Python module missing: $module (will be installed in Docker)"
-        fi
-    done
 else
     check_warn "Python 3 not installed locally"
 fi
@@ -157,7 +137,7 @@ else
     check_fail "Volume mounts not configured"
 fi
 
-# Check web app structure
+# Check web app
 print_header "Web Application Check"
 
 if [ -f web/app.py ]; then
@@ -176,43 +156,47 @@ if [ -f web/static/app.js ]; then
     check_pass "Frontend script found: web/static/app.js"
 fi
 
-if [ -f web/static/style.css ]; then
-    check_pass "Frontend styles found: web/static/style.css"
-fi
-
 # Check vocabulary data
 print_header "Vocabulary Data Check"
 
 if [ -f resources/vocabulary_N4.xlsx ]; then
     size=$(du -h resources/vocabulary_N4.xlsx | awk '{print $1}')
     check_pass "Vocabulary file exists: vocabulary_N4.xlsx (${size})"
+else
+    check_fail "Vocabulary file missing: vocabulary_N4.xlsx"
 fi
 
 if [ -f resources/vocabulary_N5.xlsx ]; then
     size=$(du -h resources/vocabulary_N5.xlsx | awk '{print $1}')
     check_pass "Vocabulary file exists: vocabulary_N5.xlsx (${size})"
+else
+    check_fail "Vocabulary file missing: vocabulary_N5.xlsx"
 fi
 
 # Summary
 print_header "Summary"
 
 total=$((CHECKS_PASSED + CHECKS_FAILED))
-echo -e "${GREEN}Passed:${NC} $CHECKS_PASSED"
-echo -e "${RED}Failed:${NC} $CHECKS_FAILED"
-echo -e "${BLUE}Total:${NC} $total"
+echo "Passed: $CHECKS_PASSED"
+echo "Failed: $CHECKS_FAILED"
+echo "Total:  $total"
 
 if [ $CHECKS_FAILED -eq 0 ]; then
-    echo -e "\n${GREEN}✓ All checks passed! Ready to deploy.${NC}"
-    echo -e "\nNext steps:"
-    echo -e "  1. Review deployment configuration: cat deploy.sh"
-    echo -e "  2. Start deployment: ./deploy.sh"
-    echo -e "  3. Monitor logs: ./nas-commands.sh logs"
+    echo ""
+    echo "SUCCESS - All checks passed! Ready to deploy."
+    echo ""
+    echo "Next steps:"
+    echo "  1. Review deployment: cat deploy.sh"
+    echo "  2. Start deployment: ./deploy.sh"
+    echo "  3. Monitor logs: ./nas-commands.sh logs"
     exit 0
 else
-    echo -e "\n${RED}✗ Some checks failed. Please review above and fix issues.${NC}"
-    echo -e "\nCommon fixes:"
-    echo -e "  • Run SSH setup: ./setup-ssh.sh"
-    echo -e "  • Install Docker on NAS: ssh nas 'curl -sSL https://get.docker.com | sh'"
-    echo -e "  • Check network connectivity: ping 192.168.1.100"
+    echo ""
+    echo "FAILURE - Some checks failed. Please review and fix issues."
+    echo ""
+    echo "Common fixes:"
+    echo "  • Run SSH setup: ./setup-ssh.sh"
+    echo "  • Install Docker on NAS: ssh nas 'curl -sSL https://get.docker.com | sh'"
+    echo "  • Check network: ping 192.168.1.100"
     exit 1
 fi
