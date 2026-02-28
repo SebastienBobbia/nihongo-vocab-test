@@ -69,6 +69,34 @@ bash setup-ssh.sh loklas 192.168.1.100 nas.my-tailscale.ts.net
 - Vérifications pré-déploiement
 - Dépannage post-déploiement
 
+### Je veux vérifier automatiquement les prérequis
+**→ Utilisez `verify-deployment.sh`**
+```bash
+chmod +x verify-deployment.sh
+./verify-deployment.sh
+```
+- Vérifie tous les fichiers
+- Teste la connexion SSH
+- Affiche un rapport
+
+---
+
+## 🔧 DÉPANNAGE & ISSUES
+
+### J'ai une erreur, où chercher d'abord ?
+**→ Consultez [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md)** 
+- Problèmes SSH
+- Problèmes Docker
+- Problèmes réseau
+- Solutions pas à pas
+
+### Je veux connaître les limites et problèmes connus
+**→ Lisez [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md)**
+- Limitations actuelles
+- Cas limites
+- Compatibilité navigateur
+- Recommandations futures
+
 ---
 
 ## 📱 APPLICATION WEB
@@ -100,6 +128,8 @@ bash setup-ssh.sh loklas 192.168.1.100 nas.my-tailscale.ts.net
 | `SECURITY_OVERVIEW.md` | Sécurité complète | 5 min |
 | `CHECKLIST.md` | Vérifications | 10 min |
 | `WEB_APP_README.md` | App web | 10 min |
+| `TROUBLESHOOTING.md` | Dépannage complet | 20 min |
+| `KNOWN_ISSUES.md` | Limitations et edge cases | 15 min |
 | `QUICK_START.md` | Résumé 3 commandes | 2 min |
 
 ### Scripts (à exécuter)
@@ -107,6 +137,7 @@ bash setup-ssh.sh loklas 192.168.1.100 nas.my-tailscale.ts.net
 |---------|----------|
 | `setup-ssh.sh` | Configuration SSH automatisée |
 | `deploy.sh` | Déploiement NAS automatisé |
+| `verify-deployment.sh` | Vérification des prérequis |
 | `nas-commands.sh` | Scripts helper (généré par setup-ssh.sh) |
 
 ### Configuration
@@ -160,23 +191,31 @@ ssh nas
 
 1. **`README_FINAL.md`** - Comprendre le concept (5 min)
 2. **`SSH_QUICK.md`** - Configurer SSH (2 min)
-3. **`DEPLOY_QUICK.md`** - Déployer (5 min)
-4. **`CHECKLIST.md`** - Vérifier avant de lancer (10 min)
-5. **Lancer le déploiement !**
-6. **`DEPLOY_UGREEN.md`** - En cas de problème (besoin de référence)
+3. **`verify-deployment.sh`** - Vérifier les prérequis (1 min)
+4. **`DEPLOY_QUICK.md`** - Déployer (5 min)
+5. **`CHECKLIST.md`** - Vérifier avant de lancer (10 min)
+6. **Lancer le déploiement !**
+7. **`TROUBLESHOOTING.md`** - Si problème (besoin de référence)
+8. **`KNOWN_ISSUES.md`** - Comprendre les limites
 
 ---
 
 ## 🆘 VOUS AVEZ UN PROBLÈME ?
 
 ### Problème SSH
-→ `SSH_CONFIG.md` section "Dépannage"
+→ `TROUBLESHOOTING.md` section "SSH Connection Issues"
 
 ### Problème de déploiement
-→ `DEPLOY_UGREEN.md` section "Dépannage"
+→ `TROUBLESHOOTING.md` section "Docker Issues"
 
-### Problème d'accès iPhone
-→ `CHECKLIST.md` section "Test sur iPhone"
+### Problème d'accès
+→ `TROUBLESHOOTING.md` section "Network & Tailscale Issues"
+
+### Problème d'application
+→ `TROUBLESHOOTING.md` section "Application Issues"
+
+### Questions sur les limites
+→ `KNOWN_ISSUES.md`
 
 ### Questions de sécurité
 → `SECURITY_OVERVIEW.md`
