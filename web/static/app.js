@@ -1,21 +1,20 @@
 /**
  * Nihongo Vocab Test - Frontend Application
- * Handles UI logic and API communication
  */
 
 // ============================================================================
-// State Management
+// State
 // ============================================================================
 
 const state = {
-    currentScreen: 'menu',
-    currentProfile: null,
-    selectedSheets: [],
-    currentTest: null,
+    currentScreen:        'menu',
+    currentProfile:       null,
+    selectedSheets:       [],
+    allSheets:            [],
+    testData:             null,   // { sections: [ { name, questions: [...] } ] }
+    allQuestions:         [],     // flat list built from sections
     currentQuestionIndex: 0,
-    userAnswers: {}, // { questionId: answerIndex }
-    testData: null,
-    allSheets: []
+    userAnswers:          {},     // { "question_id": chosen_index }
 };
 
 // ============================================================================
@@ -23,12 +22,7 @@ const state = {
 // ============================================================================
 
 function showScreen(screenName) {
-    // Hide all screens
-    document.querySelectorAll('.screen').forEach(screen => {
-        screen.classList.add('hidden');
-    });
-
-    // Show selected screen
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
     const screen = document.getElementById(`${screenName}-screen`);
     if (screen) {
         screen.classList.remove('hidden');
@@ -41,11 +35,13 @@ function goToMenu() {
     showScreen('menu');
 }
 
+// ============================================================================
+// Sheet Selection
+// ============================================================================
+
 function startTest(profile) {
     state.currentProfile = profile;
     state.selectedSheets = [];
-    
-    // Load available sheets
     loadSheets(profile);
 }
 
@@ -54,11 +50,10 @@ async function loadSheets(profile) {
     try {
         const response = await fetch(`/api/available-sheets/${profile}`);
         if (!response.ok) throw new Error('Failed to load sheets');
-        
+
         const data = await response.json();
-        state.allSheets = data.sheets;
-        
-        // Display level selection screen
+        state.allSheets = data.sheets;  // already sorted numerically by backend
+
         document.getElementById('level-name').textContent = profile;
         renderSheetsList();
         showScreen('level');
@@ -72,55 +67,73 @@ async function loadSheets(profile) {
 function renderSheetsList() {
     const container = document.getElementById('sheets-list');
     container.innerHTML = '';
-    
+
     state.allSheets.forEach(sheet => {
         const btn = document.createElement('button');
         btn.className = 'sheet-btn';
-        btn.textContent = sheet.split('-')[1]; // Show only the number (e.g., "14" from "N4-14")
-        btn.onclick = () => toggleSheet(sheet);
-        
-        if (state.selectedSheets.includes(sheet)) {
-            btn.classList.add('selected');
-        }
-        
+        btn.textContent = sheet.split('-')[1];  // "14" from "N4-14"
+        btn.setAttribute('aria-label', sheet);
+        if (state.selectedSheets.includes(sheet)) btn.classList.add('selected');
+        btn.onclick = () => toggleSheet(sheet, btn);
         container.appendChild(btn);
     });
 }
 
-function toggleSheet(sheet) {
-    const index = state.selectedSheets.indexOf(sheet);
-    if (index > -1) {
-        state.selectedSheets.splice(index, 1);
+function toggleSheet(sheet, btn) {
+    const idx = state.selectedSheets.indexOf(sheet);
+    if (idx > -1) {
+        state.selectedSheets.splice(idx, 1);
+        btn.classList.remove('selected');
     } else {
         state.selectedSheets.push(sheet);
+        btn.classList.add('selected');
     }
-    renderSheetsList();
 }
+
+// ============================================================================
+// Test Generation
+// ============================================================================
 
 async function startSelectedTest() {
     if (state.selectedSheets.length === 0) {
-        showError('Please select at least one sheet');
+        showError('Sélectionne au moins une feuille.');
         return;
     }
-    
+
     showLoading(true);
     try {
         const response = await fetch('/api/generate', {
-            method: 'POST',
+            method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body:    JSON.stringify({
                 profile: state.currentProfile,
-                sheets: state.selectedSheets
-            })
+                sheets:  state.selectedSheets,
+            }),
         });
-        
-        if (!response.ok) throw new Error('Failed to generate test');
-        
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to generate test');
+        }
+
         const data = await response.json();
-        state.testData = data.test_data;
+
+        // Validate structure
+        if (!data.test_data || !Array.isArray(data.test_data.sections)) {
+            throw new Error('Unexpected response format from server');
+        }
+
+        state.testData   = data.test_data;
+        // Flatten all sections into one question list
+        state.allQuestions = data.test_data.sections.flatMap(s => s.questions);
+
+        if (state.allQuestions.length === 0) {
+            throw new Error('No questions generated');
+        }
+
         state.currentQuestionIndex = 0;
         state.userAnswers = {};
-        
+
         displayTest();
         showScreen('test');
     } catch (error) {
@@ -135,114 +148,79 @@ async function startSelectedTest() {
 // ============================================================================
 
 function displayTest() {
-    const question = getCurrentQuestion();
+    const question = state.allQuestions[state.currentQuestionIndex];
     if (!question) return;
-    
+
     updateProgressBar();
     displayQuestion(question);
     updateNavigationButtons();
 }
 
-function getCurrentQuestion() {
-    if (!state.testData || !state.testData.sections.length) return null;
-    
-    // Flatten all questions from all sections
-    const allQuestions = [];
-    state.testData.sections.forEach(section => {
-        allQuestions.push(...section.questions);
-    });
-    
-    return allQuestions[state.currentQuestionIndex] || null;
-}
-
 function displayQuestion(question) {
-    const questionId = question.id;
-    const isKanjiType = state.currentQuestionIndex % 2 === 0; // Alternate between types
-    
+    const isKanjiType = question.type === 'kanji_kana';
+
     if (isKanjiType) {
-        // Kanji → Hiragana
         document.getElementById('q-type-1').classList.remove('hidden');
         document.getElementById('q-type-2').classList.add('hidden');
-        
         document.getElementById('q-kanji').textContent = question.question;
-        renderChoices(question.choices, 'choices-1', questionId);
+        renderChoices(question, 'choices-1');
     } else {
-        // French → Japanese
         document.getElementById('q-type-1').classList.add('hidden');
         document.getElementById('q-type-2').classList.remove('hidden');
-        
         document.getElementById('q-french').textContent = question.question;
-        renderChoices(question.choices, 'choices-2', questionId);
+        renderChoices(question, 'choices-2');
     }
-    
-    // Update question counter
+
     document.getElementById('current-q').textContent = state.currentQuestionIndex + 1;
-    document.getElementById('total-q').textContent = getTotalQuestions();
+    document.getElementById('total-q').textContent   = state.allQuestions.length;
 }
 
-function renderChoices(choices, containerId, questionId) {
+function renderChoices(question, containerId) {
     const container = document.getElementById(containerId);
     container.innerHTML = '';
-    
-    choices.forEach((choice, index) => {
+
+    question.choices.forEach((choice, index) => {
         const btn = document.createElement('button');
-        btn.className = 'choice-btn';
+        btn.className   = 'choice-btn';
         btn.textContent = choice;
-        btn.onclick = () => selectAnswer(questionId, index);
-        
-        // Highlight previously selected answer
-        if (state.userAnswers[questionId] === index) {
+
+        if (state.userAnswers[question.id] === index) {
             btn.classList.add('selected');
         }
-        
+
+        btn.onclick = () => selectAnswer(question.id, index, question, containerId);
         container.appendChild(btn);
     });
 }
 
-function selectAnswer(questionId, answerIndex) {
+function selectAnswer(questionId, answerIndex, question, containerId) {
     state.userAnswers[questionId] = answerIndex;
-    
-    // Update UI to show selection
-    const question = getCurrentQuestion();
-    if (question) {
-        const isKanjiType = state.currentQuestionIndex % 2 === 0;
-        const containerId = isKanjiType ? 'choices-1' : 'choices-2';
-        renderChoices(question.choices, containerId, questionId);
-    }
-    
-    // Auto-advance to next question after selection
+
+    // Re-render choices to show selection
+    renderChoices(question, containerId);
+
+    // Auto-advance after a short delay
     setTimeout(() => nextQuestion(), 500);
 }
 
+// ============================================================================
+// Progress & Navigation
+// ============================================================================
+
 function updateProgressBar() {
-    const totalQuestions = getTotalQuestions();
-    const progress = ((state.currentQuestionIndex + 1) / totalQuestions) * 100;
+    const total    = state.allQuestions.length;
+    const progress = ((state.currentQuestionIndex + 1) / total) * 100;
     document.getElementById('progress-fill').style.width = progress + '%';
 }
 
 function updateNavigationButtons() {
-    const totalQuestions = getTotalQuestions();
-    const prevBtn = document.getElementById('prev-btn');
-    const nextBtn = document.getElementById('next-btn');
-    
-    prevBtn.disabled = state.currentQuestionIndex === 0;
-    nextBtn.disabled = state.currentQuestionIndex === totalQuestions - 1;
+    const total = state.allQuestions.length;
+    document.getElementById('prev-btn').disabled = state.currentQuestionIndex === 0;
+    document.getElementById('next-btn').disabled = state.currentQuestionIndex === total - 1;
 }
-
-function getTotalQuestions() {
-    if (!state.testData || !state.testData.sections.length) return 0;
-    return state.testData.sections.reduce((total, section) => {
-        return total + section.questions.length;
-    }, 0);
-}
-
-// ============================================================================
-// Navigation
-// ============================================================================
 
 function nextQuestion() {
-    const totalQuestions = getTotalQuestions();
-    if (state.currentQuestionIndex < totalQuestions - 1) {
+    if (state.currentQuestionIndex < state.allQuestions.length - 1) {
         state.currentQuestionIndex++;
         displayTest();
     } else {
@@ -261,22 +239,29 @@ function skipQuestion() {
     nextQuestion();
 }
 
+// ============================================================================
+// Finish & Correction
+// ============================================================================
+
 async function finishTest() {
     showLoading(true);
     try {
-        // Call correction API
+        // Echo the full question list back so the server can check correct_index
         const response = await fetch('/api/correct', {
-            method: 'POST',
+            method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                profile: state.currentProfile,
-                test_name: state.selectedSheets.join('_'),
-                answers: state.userAnswers
-            })
+            body:    JSON.stringify({
+                profile:   state.currentProfile,
+                answers:   state.userAnswers,
+                questions: state.allQuestions,
+            }),
         });
-        
-        if (!response.ok) throw new Error('Failed to correct test');
-        
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to correct test');
+        }
+
         const data = await response.json();
         displayResults(data.correction);
         showScreen('results');
@@ -288,35 +273,32 @@ async function finishTest() {
 }
 
 // ============================================================================
-// Results Display
+// Results
 // ============================================================================
 
 function displayResults(correction) {
-    const scorePercent = Math.round((correction.correct_answers / correction.total_questions) * 100);
-    document.getElementById('score-percent').textContent = scorePercent + '%';
-    document.getElementById('score-text').textContent = 
+    const pct = Math.round((correction.correct_answers / correction.total_questions) * 100);
+    document.getElementById('score-percent').textContent = pct + '%';
+    document.getElementById('score-text').textContent =
         `${correction.correct_answers} / ${correction.total_questions} correct`;
-    
-    // Display detailed corrections
-    const detailsContainer = document.getElementById('correction-details');
-    detailsContainer.innerHTML = '';
-    
-    if (correction.details && correction.details.length > 0) {
-        correction.details.forEach(detail => {
-            const div = document.createElement('div');
-            div.className = 'detail-item';
-            div.innerHTML = `
-                <div class="detail-item-q">Q${detail.question_number}: ${detail.question}</div>
-                <div class="detail-item-result">
-                    <span>Your answer: ${detail.user_answer}</span>
-                    <span class="${detail.is_correct ? 'result-correct' : 'result-wrong'}">
-                        ${detail.is_correct ? '✓ Correct' : '✗ Wrong - ' + detail.correct_answer}
-                    </span>
-                </div>
-            `;
-            detailsContainer.appendChild(div);
-        });
-    }
+
+    const container = document.getElementById('correction-details');
+    container.innerHTML = '';
+
+    (correction.details || []).forEach(detail => {
+        const div = document.createElement('div');
+        div.className = 'detail-item';
+        div.innerHTML = `
+            <div class="detail-item-q">Q${detail.question_number}: ${detail.question}</div>
+            <div class="detail-item-result">
+                <span>Réponse: ${detail.user_answer}</span>
+                <span class="${detail.is_correct ? 'result-correct' : 'result-wrong'}">
+                    ${detail.is_correct ? '✓ Correct' : '✗ Incorrect — ' + detail.correct_answer}
+                </span>
+            </div>
+        `;
+        container.appendChild(div);
+    });
 }
 
 function retakeTest() {
@@ -326,49 +308,58 @@ function retakeTest() {
 }
 
 // ============================================================================
-// Utility Functions
+// Utilities
 // ============================================================================
 
 function showLoading(show) {
-    const loadingEl = document.getElementById('loading');
-    if (show) {
-        loadingEl.classList.remove('hidden');
-    } else {
-        loadingEl.classList.add('hidden');
-    }
+    document.getElementById('loading').classList.toggle('hidden', !show);
 }
 
 function showError(message) {
-    const errorEl = document.getElementById('error-banner');
-    errorEl.textContent = message;
-    errorEl.classList.remove('hidden');
-    
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-        errorEl.classList.add('hidden');
-    }, 5000);
-}
-
-function viewStats() {
-    alert('Statistics feature coming soon!');
+    const el = document.getElementById('error-banner');
+    el.textContent = message;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 6000);
 }
 
 function resetTestState() {
     state.currentQuestionIndex = 0;
-    state.userAnswers = {};
-    state.testData = null;
+    state.userAnswers   = {};
+    state.testData      = null;
+    state.allQuestions  = [];
     state.selectedSheets = [];
     state.currentProfile = null;
 }
 
 // ============================================================================
-// Initialization
+// Dark mode toggle
+// ============================================================================
+
+function toggleDarkMode() {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('darkMode', isDark ? '1' : '0');
+    updateDarkModeIcon(isDark);
+}
+
+function updateDarkModeIcon(isDark) {
+    const btn = document.getElementById('dark-mode-btn');
+    if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+}
+
+// ============================================================================
+// Init
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Restore dark mode preference
+    const savedDark = localStorage.getItem('darkMode') === '1';
+    if (savedDark) {
+        document.documentElement.classList.add('dark');
+        updateDarkModeIcon(true);
+    }
+
     showScreen('menu');
-    
-    // Check API health
+
     fetch('/health')
         .then(r => r.ok ? null : Promise.reject())
         .catch(() => showError('API connection failed. Check server.'));

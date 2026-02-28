@@ -5,8 +5,6 @@ Accessible from iOS via web interface on NAS
 
 import os
 import sys
-import json
-import tempfile
 import random
 from pathlib import Path
 from typing import Optional
@@ -21,8 +19,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import PROFILES
-from generate_test import generate_test_for_sheet, detect_sheets, load_vocabulary
-from correct_test import correct_test_file, load_answer_key
+from generate_test import detect_sheets, load_vocabulary, get_wrong_choices
 
 app = FastAPI(title="Nihongo Vocab Test")
 
@@ -38,15 +35,15 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 class TestRequest(BaseModel):
     """Request to generate a new test"""
-    profile: str  # "N4" or "N5"
-    sheets: Optional[list] = None  # Optional specific sheets, e.g. ["N4-14", "N4-15"]
+    profile: str          # "N4" or "N5"
+    sheets: Optional[list] = None  # e.g. ["N4-14", "N4-15"]
 
 
 class TestCorrectRequest(BaseModel):
     """Request to correct a test"""
     profile: str
-    test_name: str
-    answers: dict  # {question_number: answer_choice}
+    answers: dict         # { "question_id": correct_index }
+    questions: list       # Full question list echoed back from frontend
 
 
 # ============================================================================
@@ -59,70 +56,125 @@ async def root():
     html_path = Path(__file__).parent / "static" / "index.html"
     if html_path.exists():
         return FileResponse(html_path)
-    return "<h1>Nihongo Vocab Test App</h1><p>Web interface loading...</p>"
+    return "<h1>Nihongo Vocab Test App</h1>"
 
 
 @app.get("/api/profiles")
 async def get_profiles():
     """Get available profiles (N4, N5)"""
-    profiles = list(PROFILES.keys())
-    return {"profiles": profiles}
+    return {"profiles": list(PROFILES.keys())}
+
+
+@app.get("/api/available-sheets/{profile}")
+async def get_available_sheets(profile: str):
+    """Get list of available sheet names for a profile, sorted numerically."""
+    if profile not in PROFILES:
+        raise HTTPException(status_code=400, detail=f"Unknown profile: {profile}")
+
+    profile_config = PROFILES[profile]
+    vocab_file = profile_config["vocab_file"]
+
+    if not Path(vocab_file).exists():
+        raise HTTPException(status_code=404, detail=f"Vocabulary file not found: {vocab_file}")
+
+    try:
+        xls = pd.ExcelFile(vocab_file)
+        level = profile_config["level"]
+        sheets = [s for s in xls.sheet_names if s.startswith(level + "-")]
+        # Sort numerically: N4-2 < N4-10 < N4-11
+        sheets.sort(key=lambda s: int(s.split("-")[1]))
+        return {"sheets": sheets}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/generate")
 async def generate(request: TestRequest):
-    """Generate a new test"""
+    """
+    Generate a test and return all questions as a flat list with sections.
+    The frontend expects: { test_data: { sections: [ { name, questions: [...] } ] } }
+    """
     if request.profile not in PROFILES:
         raise HTTPException(status_code=400, detail=f"Unknown profile: {request.profile}")
-    
+
     profile_config = PROFILES[request.profile]
-    
+
     try:
-        # Get sheets to generate (use provided or auto-detect)
-        sheets_to_generate = request.sheets or detect_sheets(
-            profile_config["vocab_file"],
-            profile_config["level"]
+        sheets = request.sheets or detect_sheets(
+            profile_config["vocab_file"], profile_config["level"]
         )
-        
-        if not sheets_to_generate:
-            raise ValueError("No sheets found to generate")
-        
-        # Generate test for each sheet and collect all questions
-        all_vocab_items = []
-        sheet_names = []
-        
-        for sheet in sheets_to_generate[:2]:  # Limit to 2 sheets for web interface
-            try:
-                # Load vocabulary for this sheet
-                vocab_df = load_vocabulary(profile_config["vocab_file"], [sheet])
-                
-                # Store sheet info
-                sheet_names.append(sheet)
-                
-                # Split for two question types (use first half for kanji->kana, second for fr->jp)
-                mid = len(vocab_df) // 2
-                
-                all_vocab_items.append({
-                    "sheet": sheet,
-                    "kanji_kana_df": vocab_df.iloc[:mid],
-                    "fr_jp_df": vocab_df.iloc[mid:]
-                })
-            except Exception as e:
-                print(f"Warning: Could not process sheet {sheet}: {e}")
-                continue
-        
-        if not all_vocab_items:
-            raise ValueError("Failed to generate any questions")
-        
-        # Create test data for web interface
-        test_data = prepare_test_for_web_from_vocab(all_vocab_items)
-        
-        return {
-            "success": True,
-            "test_data": test_data,
-            "sheet_names": sheet_names,
-            "total_questions": len(test_data.get("questions", []))
+        if not sheets:
+            raise ValueError("No sheets found")
+
+        # Load full vocabulary for all selected sheets (needed for good distractors)
+        df_all = load_vocabulary(profile_config["vocab_file"], sheets)
+
+        if df_all.empty:
+            raise ValueError("No vocabulary data found in selected sheets")
+
+        # Deduplicate on Kanji to avoid sampling issues
+        df_unique = df_all.drop_duplicates(subset=["Kanji"]).reset_index(drop=True)
+        n_available = len(df_unique)
+
+        # 50 questions per section max, split evenly between the two types
+        n_per_type = min(25, n_available // 2)
+        if n_per_type < 1:
+            raise ValueError("Not enough vocabulary to generate a test")
+
+        sample1 = df_unique.sample(n=n_per_type).reset_index(drop=True)
+        used = set(sample1["Kanji"])
+        remaining = df_unique[~df_unique["Kanji"].isin(used)]
+        n_type2 = min(n_per_type, len(remaining))
+        sample2 = remaining.sample(n=n_type2).reset_index(drop=True)
+
+        # Build section 1: Kanji → Hiragana
+        q_id = 1
+        section1_questions = []
+        for _, row in sample1.iterrows():
+            kanji    = str(row["Kanji"]).strip()
+            hiragana = str(row["Hiragana"]).strip()
+            wrong    = get_wrong_choices(hiragana, "Hiragana", df_all)
+            choices  = [hiragana] + wrong
+            random.shuffle(choices)
+            section1_questions.append({
+                "id":            q_id,
+                "type":          "kanji_kana",
+                "question":      kanji,
+                "choices":       choices,
+                "correct_index": choices.index(hiragana),
+            })
+            q_id += 1
+
+        # Build section 2: French → Kanji
+        section2_questions = []
+        for _, row in sample2.iterrows():
+            french = str(row["Francais"]).strip()
+            kanji  = str(row["Kanji"]).strip()
+            wrong  = get_wrong_choices(kanji, "Kanji", df_all)
+            choices = [kanji] + wrong
+            random.shuffle(choices)
+            section2_questions.append({
+                "id":            q_id,
+                "type":          "fr_jp",
+                "question":      french,
+                "choices":       choices,
+                "correct_index": choices.index(kanji),
+            })
+            q_id += 1
+
+        test_data = {
+            "sections": [
+                {"name": "Kanji→Hiragana", "questions": section1_questions},
+                {"name": "FR→JP",          "questions": section2_questions},
+            ]
         }
+
+        return {
+            "success":        True,
+            "test_data":      test_data,
+            "total_questions": len(section1_questions) + len(section2_questions),
+        }
+
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -131,206 +183,47 @@ async def generate(request: TestRequest):
 
 @app.post("/api/correct")
 async def correct(request: TestCorrectRequest):
-    """Correct a test based on provided answers"""
-    if request.profile not in PROFILES:
-        raise HTTPException(status_code=400, detail=f"Unknown profile: {request.profile}")
-    
+    """
+    Correct a test.
+    The frontend echoes back the full question list (with correct_index) and the
+    user's answers { question_id: chosen_index }.
+    """
     try:
-        # Create a temporary test file with answers marked
-        # This will be passed to the correction function
-        correction_data = prepare_correction(
-            profile=request.profile,
-            test_name=request.test_name,
-            answers=request.answers
-        )
-        
+        correct_count = 0
+        details = []
+
+        for question in request.questions:
+            q_id        = question["id"]
+            user_idx    = request.answers.get(str(q_id))  # JS keys are strings
+            correct_idx = question["correct_index"]
+            is_correct  = user_idx is not None and int(user_idx) == correct_idx
+
+            if is_correct:
+                correct_count += 1
+
+            details.append({
+                "question_number": q_id,
+                "question":        question["question"],
+                "user_answer":     question["choices"][int(user_idx)] if user_idx is not None else "—",
+                "correct_answer":  question["choices"][correct_idx],
+                "is_correct":      is_correct,
+            })
+
+        total = len(request.questions)
         return {
             "success": True,
-            "correction": correction_data
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/available-sheets/{profile}")
-async def get_available_sheets(profile: str):
-    """Get list of available sheet names for a profile"""
-    if profile not in PROFILES:
-        raise HTTPException(status_code=400, detail=f"Unknown profile: {profile}")
-    
-    profile_config = PROFILES[profile]
-    vocab_file = profile_config["vocab_file"]
-    
-    if not Path(vocab_file).exists():
-        raise HTTPException(status_code=404, detail=f"Vocabulary file not found: {vocab_file}")
-    
-    try:
-        import pandas as pd
-        xls = pd.ExcelFile(vocab_file)
-        sheets = [s for s in xls.sheet_names if s.startswith(profile_config["level"])]
-        return {"sheets": sorted(sheets)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ============================================================================
-# Helper Functions
-# ============================================================================
-
-def prepare_test_for_web_from_vocab(vocab_data: list) -> dict:
-    """
-    Convert vocabulary data to test questions for web interface
-    """
-    
-    questions = []
-    question_id = 1
-    
-    for vocab_item in vocab_data:
-        sheet = vocab_item["sheet"]
-        
-        # Generate Kanji → Hiragana questions
-        for idx, (_, row) in enumerate(vocab_item["kanji_kana_df"].iterrows()):
-            if idx >= 25:  # Limit to 25 questions per type
-                break
-                
-            kanji = str(row.get('Kanji', '')).strip()
-            hiragana = str(row.get('Hiragana', '')).strip()
-            
-            if not kanji or not hiragana:
-                continue
-            
-            # Create choices - for now, we'll use placeholder choices
-            # In production, these should be wrong distractors from other vocab
-            choices = [hiragana, f"選択肢{question_id % 4}", f"選択肢{(question_id+1) % 4}", f"選択肢{(question_id+2) % 4}"]
-            random.shuffle(choices)
-            correct_idx = choices.index(hiragana)
-            
-            questions.append({
-                "id": question_id,
-                "type": "kanji_kana",
-                "sheet": sheet,
-                "question": kanji,
-                "choices": choices,
-                "correct_index": correct_idx
-            })
-            question_id += 1
-        
-        # Generate French → Japanese questions
-        for idx, (_, row) in enumerate(vocab_item["fr_jp_df"].iterrows()):
-            if idx >= 25:  # Limit to 25 questions per type
-                break
-                
-            french = str(row.get('Francais', '')).strip()
-            kanji = str(row.get('Kanji', '')).strip()
-            
-            if not french or not kanji:
-                continue
-            
-            # Create choices
-            choices = [kanji, f"選択肢{question_id % 4}", f"選択肢{(question_id+1) % 4}", f"選択肢{(question_id+2) % 4}"]
-            random.shuffle(choices)
-            correct_idx = choices.index(kanji)
-            
-            questions.append({
-                "id": question_id,
-                "type": "fr_jp",
-                "sheet": sheet,
-                "question": french,
-                "choices": choices,
-                "correct_index": correct_idx
-            })
-            question_id += 1
-    
-    return {"questions": questions}
-
-
-def prepare_test_for_web(test_file: Path, sheet_names: list, profile: str) -> dict:
-    """
-    Convert Excel test file to JSON for web interface
-    Returns structure like:
-    {
-        "sections": [
-            {
-                "name": "Kanji→Hiragana",
-                "questions": [
-                    {
-                        "id": 1,
-                        "question": "漢字",
-                        "choices": ["ひらがな1", "ひらがな2", "ひらがな3", "ひらがな4"],
-                        "correct_answer": 0  # only for review
-                    }
-                ]
+            "correction": {
+                "total_questions":  total,
+                "correct_answers":  correct_count,
+                "score":            round(correct_count / total * 100, 1) if total else 0,
+                "details":          details,
             }
-        ]
-    }
-    """
-    try:
-        import openpyxl
-        from openpyxl.utils import get_column_letter
-        
-        wb = openpyxl.load_workbook(test_file)
-        sections = []
-        
-        for sheet_name in sheet_names:
-            if sheet_name not in wb.sheetnames:
-                continue
-            
-            ws = wb[sheet_name]
-            questions = []
-            
-            # Read questions from sheet (assuming structure: question in col A, choices in B-E)
-            row = 2  # Start from row 2 (row 1 is header)
-            question_id = 1
-            
-            while True:
-                question_cell = ws[f"A{row}"]
-                if not question_cell.value:
-                    break
-                
-                choices = []
-                for col in ["B", "C", "D", "E"]:
-                    cell_value = ws[f"{col}{row}"].value
-                    if cell_value:
-                        choices.append(str(cell_value))
-                
-                if len(choices) == 4:
-                    questions.append({
-                        "id": question_id,
-                        "question": str(question_cell.value),
-                        "choices": choices,
-                        "user_answer": None
-                    })
-                    question_id += 1
-                
-                row += 1
-            
-            if questions:
-                sections.append({
-                    "name": sheet_name,
-                    "questions": questions
-                })
-        
-        return {"sections": sections}
-    
+        }
+
     except Exception as e:
-        # Fallback: return empty structure
-        return {"sections": [], "error": str(e)}
-
-
-def prepare_correction(profile: str, test_name: str, answers: dict) -> dict:
-    """
-    Process answers and return correction results
-    """
-    # This is a simplified version; in real implementation,
-    # you'd compare against the Excel file's correct answers
-    
-    return {
-        "test_name": test_name,
-        "total_questions": len(answers),
-        "correct_answers": 0,
-        "score": 0,
-        "details": []
-    }
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================================================
@@ -339,5 +232,4 @@ def prepare_correction(profile: str, test_name: str, answers: dict) -> dict:
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
     return {"status": "ok"}
