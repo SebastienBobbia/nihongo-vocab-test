@@ -1,0 +1,173 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                   NIHONGO VOCAB TEST - QUICK REFERENCE                       ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+📋 FIRST TIME SETUP
+═══════════════════════════════════════════════════════════════════════════════
+
+  1. Configure SSH (run once):
+     $ chmod +x setup-ssh.sh
+     $ ./setup-ssh.sh
+
+  2. Verify everything is ready:
+     $ chmod +x verify-deployment.sh
+     $ ./verify-deployment.sh
+
+  3. Deploy to NAS:
+     $ chmod +x deploy.sh
+     $ ./deploy.sh
+
+  4. Access on iPhone:
+     → Open Tailscale
+     → Go to: https://nihongo.your-tailscale.ts.net:8500
+
+
+📖 DOCUMENTATION GUIDE
+═══════════════════════════════════════════════════════════════════════════════
+
+  Reading 5 min:       README_FINAL.md, DEPLOY_QUICK.md
+  Reading 10 min:      SSH_QUICK.md, CHECKLIST.md
+  Reading 20 min:      DEPLOY_UGREEN.md, TROUBLESHOOTING.md, KNOWN_ISSUES.md
+  Reading 30 min+:     All documentation for deep understanding
+
+  Run Scripts:         verify-deployment.sh, setup-ssh.sh, deploy.sh
+
+
+🔧 DAILY OPERATIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+  View logs:
+  $ ./nas-commands.sh logs
+
+  View recent 50 lines:
+  $ ./nas-commands.sh logs --tail=50
+
+  Restart app:
+  $ ./nas-commands.sh restart
+
+  Check container status:
+  $ ./nas-commands.sh ps
+
+  SSH to NAS:
+  $ ssh nas
+
+  Redeploy:
+  $ ./deploy.sh
+
+
+🔍 VERIFICATION COMMANDS
+═══════════════════════════════════════════════════════════════════════════════
+
+  Check all prerequisites:
+  $ ./verify-deployment.sh
+
+  Test SSH connection:
+  $ ssh nas "echo OK"
+
+  Check NAS Docker status:
+  $ ssh nas "docker ps"
+
+  Check application logs:
+  $ ./nas-commands.sh logs
+
+  Check NAS disk space:
+  $ ssh nas "df -h"
+
+
+❓ TROUBLESHOOTING QUICK FIXES
+═══════════════════════════════════════════════════════════════════════════════
+
+  SSH connection fails:
+  ✓ Run: ./setup-ssh.sh
+  ✓ Check: ssh nas "echo OK"
+  ✓ Read: TROUBLESHOOTING.md → "SSH Connection Issues"
+
+  Container won't start:
+  ✓ Check: ./nas-commands.sh logs
+  ✓ Restart: ./nas-commands.sh restart
+  ✓ Read: TROUBLESHOOTING.md → "Docker Issues"
+
+  Can't access from iPhone:
+  ✓ Check: Tailscale is running on NAS
+  ✓ Check: Custom domain configured
+  ✓ Test: Try http://IP:8500 directly
+  ✓ Read: TROUBLESHOOTING.md → "Network Issues"
+
+  Port 8500 already in use:
+  ✓ Change: Edit docker-compose.yml ports section
+  ✓ Redeploy: ./deploy.sh
+  ✓ Read: TROUBLESHOOTING.md → "Port in use"
+
+
+⚙️ CONFIGURATION
+═══════════════════════════════════════════════════════════════════════════════
+
+  NAS Details:
+  • Address:        192.168.1.100
+  • User:           loklas
+  • Deploy Path:    /volume1/docker
+  • App Port:       8500
+  • Security:       SSH keys only (no passwords)
+
+  Key Files:
+  • Dockerfile          → Container image definition
+  • docker-compose.yml  → Port 8500 configuration
+  • requirements.txt    → Python dependencies
+  • web/app.py         → FastAPI backend
+  • web/static/        → iPhone web interface
+
+
+💡 TIPS
+═══════════════════════════════════════════════════════════════════════════════
+
+  • Always run verify-deployment.sh before deploy.sh
+  • SSH keys are stored locally (~/.ssh/id_ed25519), never in Git
+  • Logs are your friend - check them first when something breaks
+  • Ctrl+C during deployment is safe - container restarts automatically
+
+
+🎯 DEPLOYMENT CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+  Before deploying:
+  ☐ verify-deployment.sh passes all checks
+  ☐ SSH connection works (ssh nas "echo OK")
+  ☐ NAS has Docker installed and running
+  ☐ /volume1/docker directory exists
+  ☐ vocabulary files present in resources/
+  ☐ No other service using port 8500
+
+  After deploying:
+  ☐ Container is running (./nas-commands.sh ps)
+  ☐ Health check passes (./nas-commands.sh logs)
+  ☐ Can access http://localhost:8000 from your computer
+  ☐ Can generate test on iPhone via Tailscale
+
+
+📊 EXPECTED BEHAVIOR
+═══════════════════════════════════════════════════════════════════════════════
+
+  Test generation:     ~100-200ms (cold start ~1-2s)
+  Submit answer:       <50ms
+  Load new test:       ~100-200ms
+  Complete test:       ~500ms (1000+ words)
+
+  If slower, check:
+  • NAS CPU usage (ssh nas "top -bn1")
+  • NAS memory (ssh nas "free -h")
+  • Network latency (ping 192.168.1.100)
+
+
+📞 NEED HELP?
+═══════════════════════════════════════════════════════════════════════════════
+
+  1. Run: ./verify-deployment.sh
+  2. Read: TROUBLESHOOTING.md (for your specific issue)
+  3. Check: ./nas-commands.sh logs (for error details)
+  4. Review: KNOWN_ISSUES.md (for limitations)
+
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║  Documentation: DOCS_INDEX.md                                              ║
+║  All commands are relative to project root directory                       ║
+╚════════════════════════════════════════════════════════════════════════════╝
