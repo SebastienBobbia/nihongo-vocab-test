@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  nihongo-vocab-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nihongo-vocab-test
+    ports:
+      - "8500:8000"
+    volumes:
+      - ./output:/app/output
+      - ./resources:/app/resources
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - nihongo-net
+
+networks:
+  nihongo-net:
+    driver: bridge
